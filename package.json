@@ -5,10 +5,13 @@
   "description": "RaptorForge — the open-source, self-hostable operating system for hackathons.",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.9.0 <25"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+  "allowScripts": {
+    "@prisma/client": true,
+    "@prisma/engines": true,
+    "esbuild": true,
+    "prisma": true
   },
   "scripts": {
     "dev": "next dev",
@@ -49,6 +52,7 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^18.0.4",
     "postcss": "^8.5.3",
     "prisma": "^6.5.0",
     "tailwindcss": "^3.4.17",
