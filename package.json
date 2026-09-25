@@ -1,0 +1,59 @@
+{
+  "name": "raptorforge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RaptorForge — the open-source, self-hostable operating system for hackathons.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "postinstall": "prisma generate",
+    "typecheck": "tsc --noEmit",
+    "db:up": "node scripts/dev-db.mjs up",
+    "db:down": "node scripts/dev-db.mjs down",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "node scripts/dev-db.mjs reset",
+    "test": "vitest run tests/unit",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:journeys": "vitest run tests/journeys",
+    "verify": "node scripts/verify-stack.mjs",
+    "openapi:export": "node scripts/export-openapi.mjs",
+    "proof:normalization": "tsx scripts/normalization-proof.ts",
+    "acceptance": "node scripts/acceptance.mjs",
+    "offline:check": "node scripts/offline-check.mjs",
+    "webhook-receiver": "tsx scripts/webhook-receiver.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.5.0",
+    "clsx": "^2.1.1",
+    "js-yaml": "^4.1.0",
+    "next": "^15.2.4",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "prisma": "^6.5.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}

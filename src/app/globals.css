@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-forge-950 text-forge-100 antialiased;
+}
+
+::selection {
+  @apply bg-ember-500/40;
+}
+
+*:focus-visible {
+  @apply outline-none ring-2 ring-ember-500/70 ring-offset-2 ring-offset-forge-950;
+}
+
+.card {
+  @apply rounded-lg border border-forge-800 bg-forge-900/60;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.btn-primary {
+  @apply btn bg-ember-600 text-white hover:bg-ember-500;
+}
+
+.btn-secondary {
+  @apply btn border border-forge-700 bg-forge-800/60 text-forge-100 hover:border-forge-600 hover:bg-forge-800;
+}
+
+.btn-danger {
+  @apply btn border border-red-900 bg-red-950/40 text-red-300 hover:bg-red-900/40;
+}
+
+.input {
+  @apply w-full rounded-md border border-forge-700 bg-forge-900 px-3 py-2 text-sm text-forge-100 placeholder-forge-500 focus:border-ember-600;
+}
+
+.label {
+  @apply mb-1 block text-xs font-medium uppercase tracking-wide text-forge-400;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide;
+}
+
+.badge-ok { @apply badge border-emerald-800 bg-emerald-950/50 text-emerald-400; }
+.badge-warn { @apply badge border-amber-800 bg-amber-950/50 text-amber-400; }
+.badge-bad { @apply badge border-red-800 bg-red-950/50 text-red-400; }
+.badge-info { @apply badge border-forge-700 bg-forge-800/60 text-forge-300; }
+
+.table-base {
+  @apply w-full text-left text-sm;
+}
+
+.table-base thead th {
+  @apply border-b border-forge-800 pb-2 text-[11px] font-semibold uppercase tracking-wider text-forge-400;
+}
+
+.table-base tbody td {
+  @apply border-b border-forge-800/60 py-2.5 pr-4 align-middle;
+}
+
+.link {
+  @apply text-ember-400 underline-offset-4 hover:text-ember-300 hover:underline;
+}

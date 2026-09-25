@@ -1,0 +1,548 @@
+// RaptorForge data model — see DATA-MODEL.md for the full ER description.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── enums ─────────────────────────────
+
+enum Role {
+  PARTICIPANT
+  JUDGE
+  ORGANIZER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  DEACTIVATED
+}
+
+enum EventStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  ACTIVE
+  SUBMISSIONS_CLOSED
+  JUDGING
+  VOTING
+  COMPLETED
+  ARCHIVED
+}
+
+enum JudgingMode {
+  RUBRIC
+  PAIRWISE
+}
+
+enum TeamMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum ProjectStatus {
+  DRAFT
+  SUBMITTED
+  LOCKED
+  DISQUALIFIED
+}
+
+enum JudgeStatus {
+  INVITED
+  ACTIVE
+  DEACTIVATED
+}
+
+enum FlagLevel {
+  NORMAL
+  SUSPICIOUS
+  CRITICAL
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_LOGGED_IN
+  USER_LOGGED_OUT
+  USER_LOGIN_FAILED
+  EVENT_CREATED
+  EVENT_UPDATED
+  RUBRIC_CHANGED
+  TEAM_CREATED
+  TEAM_JOINED
+  TEAM_LEFT
+  INVITE_CREATED
+  INVITE_REVOKED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_SUBMITTED
+  PROJECT_LOCKED
+  PROJECT_DISQUALIFIED
+  JUDGE_CREATED
+  JUDGE_STATUS_CHANGED
+  JUDGE_ASSIGNED
+  ASSIGNMENTS_GENERATED
+  JUDGEMENT_SUBMITTED
+  JUDGEMENT_UPDATED
+  PAIRWISE_RECORDED
+  NORMALIZATION_RUN
+  RESULTS_GENERATED
+  VOTE_CAST
+  VOTE_FLAGGED
+  COMMENT_CREATED
+  COMMENT_DELETED
+  COMMENT_MODERATED
+  CERTIFICATE_GENERATED
+  CSV_IMPORTED
+  CSV_EXPORTED
+  WEBHOOK_CREATED
+  WEBHOOK_DELETED
+}
+
+// ───────────────────────────── models ─────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  role         Role       @default(PARTICIPANT)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  sessions           Session[]
+  ownedTeams         Team[]          @relation("TeamOwner")
+  memberships        TeamMember[]
+  projects           Project[]       @relation("ProjectCreator")
+  comments           Comment[]
+  votes              Vote[]
+  judgeProfile       Judge?
+  organizedEvents    EventOrganizer[]
+  certificates       Certificate[]
+  pairwiseComparison PairwiseComparison[] @relation("PairwiseJudge")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Event {
+  id                  String          @id @default(cuid())
+  name                String
+  slug                String          @unique
+  description         String          @default("")
+  startDate           DateTime
+  endDate             DateTime
+  registrationStart   DateTime
+  registrationEnd     DateTime
+  submissionDeadline  DateTime
+  status              EventStatus     @default(DRAFT)
+  judgingMode         JudgingMode     @default(RUBRIC)
+  assignmentSeed      Int             @default(42)
+  judgesPerProject    Int             @default(2)
+  maxTeamSize         Int             @default(4)
+  votingEnabled       Boolean         @default(false)
+  votingStart         DateTime?
+  votingEnd           DateTime?
+  votesPerUser        Int             @default(3)
+  votingResultsHidden Boolean         @default(true)
+  randomizedOrdering  Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  organizers          EventOrganizer[]
+  tracks              Track[]
+  prizes              Prize[]
+  teams               Team[]
+  projects            Project[]
+  judges              Judge[]
+  rubric              Rubric?
+  votes               Vote[]
+  comments            Comment[]
+  certificates        Certificate[]
+  normalizationRuns   NormalizationRun[]
+  webhookEndpoints    WebhookEndpoint[]
+  results             EventResult[]
+
+  @@index([status])
+}
+
+model EventOrganizer {
+  id         String  @id @default(cuid())
+  eventId    String
+  event      Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy String? // admin id who granted, or "system" for creator
+
+  @@unique([eventId, userId])
+  @@index([userId])
+}
+
+model Track {
+  id          String @id @default(cuid())
+  eventId     String
+  event       Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String  @default("")
+  capacity    Int?
+  status      String  @default("ACTIVE")
+
+  projects    Project[]
+  prizes      Prize[]
+
+  @@unique([eventId, slug])
+  @@index([eventId])
+}
+
+model Prize {
+  id          String  @id @default(cuid())
+  eventId     String
+  event       Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  trackId     String?
+  track       Track?  @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  name        String
+  description String  @default("")
+  amount      Int?    // in minor units (e.g. cents), currency documented in event
+  rank        Int     @default(1)
+  kind        String  @default("OVERALL") // OVERALL | TRACK | CUSTOM
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name      String
+  ownerId   String
+  owner     User     @relation("TeamOwner", fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   TeamMember[]
+  invites   TeamInvite[]
+  projects  Project[]
+
+  @@unique([eventId, name])
+  @@index([ownerId])
+}
+
+model TeamMember {
+  id       String         @id @default(cuid())
+  teamId   String
+  team     Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     TeamMemberRole @default(MEMBER)
+  joinedAt DateTime       @default(now())
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model TeamInvite {
+  id        String       @id @default(cuid())
+  teamId    String
+  team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tokenHash String       @unique
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  expiresAt DateTime
+  usedBy    String?
+}
+
+model Project {
+  id               String        @id @default(cuid())
+  eventId          String
+  event            Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  teamId           String
+  team             Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  trackId          String?
+  track            Track?        @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  name             String
+  slug             String
+  shortDescription String        @default("")
+  fullDescription  String        @default("")
+  repositoryUrl    String?
+  demoUrl          String?
+  videoUrl         String?
+  technologies     String[]      @default([])
+  status           ProjectStatus @default(DRAFT)
+  createdById      String?
+  createdBy        User?         @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  submittedAt      DateTime?
+
+  assignments      JudgeAssignment[]
+  judgements       Judgement[]
+  votes            Vote[]
+  comments         Comment[]
+
+  @@unique([eventId, slug])
+  @@unique([eventId, teamId])
+  @@index([eventId, status])
+  @@index([teamId])
+  @@index([trackId])
+}
+
+model Judge {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  status    JudgeStatus @default(INVITED)
+  expertise String[]    @default([])
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  assignments JudgeAssignment[]
+  judgements  Judgement[]
+
+  @@unique([userId, eventId])
+  @@index([eventId])
+}
+
+model JudgeAssignment {
+  id        String   @id @default(cuid())
+  judgeId   String
+  judge     Judge    @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reason    String   @default("") // human-readable audit explanation
+  createdAt DateTime @default(now())
+
+  @@unique([judgeId, projectId])
+  @@index([projectId])
+}
+
+model Rubric {
+  id         String  @id @default(cuid())
+  eventId    String  @unique
+  event      Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name       String
+  version    Int     @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  criteria   RubricCriterion[]
+}
+
+model RubricCriterion {
+  id          String  @id @default(cuid())
+  rubricId    String
+  rubric      Rubric  @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  name        String
+  description String  @default("")
+  weight      Int     // percent; rubric weights must sum to 100
+  minScore    Int     @default(1)
+  maxScore    Int     @default(5)
+  required    Boolean @default(true)
+  order       Int     @default(0)
+
+  scores      CriterionScore[]
+
+  @@index([rubricId])
+}
+
+model Judgement {
+  id            String   @id @default(cuid())
+  judgeId       String
+  judge         Judge    @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rubricVersion Int      @default(1)
+  weightedScore Float?   // server-computed at submission time
+  comment       String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  scores  CriterionScore[]
+  changes ScoreChange[]
+
+  @@unique([judgeId, projectId])
+  @@index([projectId])
+}
+
+model CriterionScore {
+  id            String          @id @default(cuid())
+  judgementId   String
+  judgement     Judgement       @relation(fields: [judgementId], references: [id], onDelete: Cascade)
+  criterionId   String
+  criterion     RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  value         Int
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([judgementId, criterionId])
+  @@index([criterionId])
+}
+
+// immutable append-only history of score edits
+model ScoreChange {
+  id          String    @id @default(cuid())
+  judgementId String
+  judgement   Judgement @relation(fields: [judgementId], references: [id], onDelete: Cascade)
+  criterionId String
+  oldValue    Int
+  newValue    Int
+  action      String    // CREATED | UPDATED
+  actorId     String
+  createdAt   DateTime  @default(now())
+
+  @@index([judgementId])
+}
+
+model PairwiseComparison {
+  id        String   @id @default(cuid())
+  eventId   String
+  judgeId   String   // User.id
+  judge     User     @relation("PairwiseJudge", fields: [judgeId], references: [id], onDelete: Cascade)
+  projectA  String
+  projectB  String
+  winner    String   // "A" | "B" | "TIE"
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+}
+
+model Vote {
+  id        String    @id @default(cuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipHash    String?
+  userAgent String?
+  flagLevel FlagLevel @default(NORMAL)
+  flagReason String?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, projectId])
+  @@index([eventId, createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String?     // null = system
+  action     AuditAction
+  resource   String
+  resourceId String?
+  metadata   Json        @default("{}")
+  createdAt  DateTime    @default(now())
+
+  @@index([action])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+}
+
+model Certificate {
+  id             String   @id @default(cuid())
+  certificateId  String   @unique // human-facing, e.g. DF26-7A82F1
+  eventId        String
+  event          Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement    String
+  issuedAt       DateTime @default(now())
+  verificationHash String
+
+  @@unique([eventId, userId, achievement])
+}
+
+model NormalizationRun {
+  id         String   @id @default(cuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  method     String   @default("zscore_winsorized")
+  paramsJson Json     @default("{}")
+  beforeJson Json     @default("{}")
+  afterJson  Json     @default("{}")
+  createdAt  DateTime @default(now())
+}
+
+// materialized results snapshot (reproducible from scores, cached for speed)
+model EventResult {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  mode        String   // RUBRIC | PAIRWISE
+  published   Boolean  @default(false)
+  payloadJson Json
+  createdAt   DateTime @default(now())
+}
+
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  url       String
+  secret    String
+  events    String[] @default([])
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  deliveries WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  endpointId  String
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  eventType   String
+  payloadJson Json
+  signature   String
+  status      String   @default("PENDING") // PENDING | DELIVERED | FAILED
+  attempts    Int      @default(0)
+  lastError   String?
+  createdAt   DateTime @default(now())
+  deliveredAt DateTime?
+
+  @@index([status])
+}
+
+// simple fixed-window rate limiting, DB-backed (survives restarts)
+model RateLimitCounter {
+  id        String   @id @default(cuid())
+  key       String   // e.g. "vote:userId" | "login:ip"
+  window    DateTime // window bucket start
+  count     Int      @default(0)
+
+  @@unique([key, window])
+  @@index([key, window])
+}

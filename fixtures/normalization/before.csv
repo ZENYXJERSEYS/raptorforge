@@ -1,0 +1,35 @@
+project,judge,rawScore
+ForgeLLM,Jia Judge,90
+ForgeLLM,Marta Kovacs,83.75
+ShipFast CI,Jamal Reyes,55
+ShipFast CI,Marta Kovacs,67.5
+DocDrift,Yuki Tanaka,97.5
+DocDrift,Marta Kovacs,80
+DocDrift,Jamal Reyes,55
+ThermalSense,Jia Judge,92.5
+ThermalSense,Yuki Tanaka,66.25
+PromptForge,Jia Judge,68.75
+PromptForge,Jamal Reyes,30
+HackMap,Jamal Reyes,45
+HackMap,Sam Okafor,63.75
+HackMap,Yuki Tanaka,68.75
+LicenseHawk,Yuki Tanaka,68.75
+LicenseHawk,Marta Kovacs,72.5
+LicenseHawk,Jia Judge,81.25
+ArgusAnnotate,Jia Judge,90
+ArgusAnnotate,Jamal Reyes,51.25
+PaletteOS,Jamal Reyes,70
+PaletteOS,Jia Judge,95
+GripForce,Marta Kovacs,83.75
+GripForce,Jamal Reyes,30
+GripForce,Yuki Tanaka,80
+TestGhost,Yuki Tanaka,66.25
+TestGhost,Marta Kovacs,82.5
+TestGhost,Jia Judge,92.5
+ChordSeeker,Jia Judge,87.5
+ChordSeeker,Jamal Reyes,63.75
+PulseBench,Marta Kovacs,61.25
+PulseBench,Yuki Tanaka,81.25
+PulseBench,Jia Judge,90
+StandupZERO,Jamal Reyes,60
+StandupZERO,Yuki Tanaka,87.5

@@ -1,0 +1,25 @@
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# local dev database (portable binaries + data) — never committed
+.tools/
+.local/
+tools/pgsql/
+
+# environment
+.env
+.env.local
+.env.*.local
+
+# test artifacts
+test-results/
+.vitest/
+
+# OS
+Thumbs.db
+.DS_Store
+.freebuff/

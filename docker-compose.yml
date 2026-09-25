@@ -1,0 +1,36 @@
+# RaptorForge — one-command, offline-capable stack.
+# Requires only Docker; no external services, no cloud accounts.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: raptorforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d raptorforge"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/raptorforge?schema=public
+      APP_URL: http://localhost:3000
+      # Change for any real deployment. Fixture/demo secret by default.
+      APP_SECRET: ${APP_SECRET:-change-me-in-production-0123456789abcdef}
+      SEED_DEMO: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["./docker/entrypoint.sh"]
+
+volumes:
+  pgdata:
