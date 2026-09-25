@@ -29,19 +29,21 @@ export const GET = handler(async (req, ctx) => {
   });
   const userById = new Map(users.map((u) => [u.id, u]));
 
-  // velocity: votes-per-minute span for users with >1 vote
+  // velocity: votes-per-minute span; needs ≥2 votes to imply any rate
   const velocity = byUser
     .map((u) => {
+      const votes = u._count.id;
       const spanMs =
         u._max.createdAt && u._min.createdAt ? u._max.createdAt.getTime() - u._min.createdAt.getTime() : 0;
-      const spanMin = Math.max(spanMs / 60000, 1 / 60);
+      // A single vote has no velocity signal — never flag it.
+      const spanMin = votes > 1 ? Math.max(spanMs / 60000, 1 / 60) : null;
+      const vpm = spanMin != null ? votes / spanMin : 0;
       return {
         user: userById.get(u.userId) ?? { id: u.userId, name: "unknown", email: "" },
-        votes: u._count.id,
-        spanMinutes: Math.round(spanMin * 100) / 100,
-        votesPerMinute: Math.round((u._count.id / spanMin) * 100) / 100,
-        level:
-          u._count.id / spanMin > 15 ? "CRITICAL" : u._count.id / spanMin > 6 ? "SUSPICIOUS" : "NORMAL",
+        votes,
+        spanMinutes: spanMin != null ? Math.round(spanMin * 100) / 100 : null,
+        votesPerMinute: Math.round(vpm * 100) / 100,
+        level: vpm > 15 ? "CRITICAL" : vpm > 6 ? "SUSPICIOUS" : "NORMAL",
       };
     })
     .sort((a, b) => b.votesPerMinute - a.votesPerMinute)
